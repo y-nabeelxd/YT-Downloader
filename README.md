@@ -21,7 +21,7 @@ A simple YouTube video downloader using `yt-dlp` in Python.
 1. Clone the repository:
 
    ```
-   git clone https://github.com/y-nabeelxd/YT-Downloader.git
+   git clone https://github.com/y-nabeelxd/YT-Downloader
    cd YT-Downloader
    ```
 
