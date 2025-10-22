@@ -1,1 +1,8 @@
 yt-dlp
+pytube>=15.0.0
+requests>=2.31.0
+rich>=13.7.0
+tqdm>=4.65.0
+mutagen>=1.45.1
+beautifulsoup4>=4.12.2
+lxml>=4.9.3
