@@ -3,14 +3,18 @@ from yt_dlp import YoutubeDL
 import logging
 
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 def get_available_resolutions(video_url):
+    """Fetch available video resolutions."""
     ydl_opts = {
         'no_proxy': True,
         'logger': logger,
         'proxy': None,
-        'verbose': True,
+        'quiet': True,
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0 Safari/537.36',
+        },
     }
     with YoutubeDL(ydl_opts) as ydl:
         info_dict = ydl.extract_info(video_url, download=False)
@@ -25,19 +29,28 @@ def get_available_resolutions(video_url):
 
         return resolutions
 
-def download_video_with_ytdlp(video_url, format_id, folder_name):
+
+def download_video_with_ytdlp(video_url, selected_resolution, folder_name):
+    """Download video at or below selected resolution."""
     ydl_opts = {
         'no_proxy': True,
-        'format': f"{format_id}+bestaudio/best",
+        'format': f'bestvideo[height<={selected_resolution[:-1]}]+bestaudio/best'
+                  if selected_resolution.endswith('p') else 'bv*+ba/b',
+        'merge_output_format': 'mp4',
         'progress_hooks': [progress_hook],
         'outtmpl': os.path.join(folder_name, '%(title)s.%(ext)s') if folder_name else '%(title)s.%(ext)s',
         'logger': logger,
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0 Safari/537.36',
+        },
         'verbose': True,
     }
     with YoutubeDL(ydl_opts) as ydl:
         ydl.download([video_url])
 
+
 def download_audio_as_mp3(video_url, folder_name):
+    """Download only audio as MP3."""
     ydl_opts = {
         'format': 'bestaudio/best',
         'outtmpl': os.path.join(folder_name, '%(title)s.%(ext)s') if folder_name else '%(title)s.%(ext)s',
@@ -49,17 +62,24 @@ def download_audio_as_mp3(video_url, folder_name):
         'progress_hooks': [progress_hook],
         'logger': logger,
         'verbose': True,
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0 Safari/537.36',
+        },
     }
     with YoutubeDL(ydl_opts) as ydl:
         ydl.download([video_url])
 
+
 def progress_hook(d):
+    """Show progress information."""
     if d['status'] == 'downloading':
         print(f"Downloading: {d['_percent_str']} of {d['filename']} at {d['_speed_str']}")
     elif d['status'] == 'finished':
-        print(f"Downloaded: {d['filename']}")
+        print(f"✅ Download completed: {d['filename']}")
+
 
 def get_folder_name():
+    """Ask user to create a folder if needed."""
     while True:
         folder_name = input("Provide a new folder name to save the files: ").strip()
         if not folder_name:
@@ -71,10 +91,14 @@ def get_folder_name():
             print(f"Folder '{folder_name}' created successfully.")
             return folder_name
 
+
 def main():
     video_url = input("Enter the YouTube video or playlist URL: ").strip()
-    download_type = input("Do you want to download video or mp3? (video/mp3): ").strip().lower()
 
+    if "youtube.com/shorts/" in video_url:
+        video_url = video_url.replace("youtube.com/shorts/", "youtube.com/watch?v=")
+
+    download_type = input("Do you want to download video or mp3? (video/mp3): ").strip().lower()
     save_in_folder = input("Do you want to save in a folder? (y/n): ").strip().lower()
     folder_name = get_folder_name() if save_in_folder == 'y' else None
 
@@ -84,7 +108,7 @@ def main():
 
     if download_type == 'mp3':
         if is_playlist:
-            print("Downloading playlist as MP3...")
+            print("🎵 Downloading playlist as MP3...")
             for entry in info_dict['entries']:
                 print(f"Downloading: {entry['title']}")
                 download_audio_as_mp3(entry['webpage_url'], folder_name)
@@ -98,13 +122,11 @@ def main():
             print(f"{fmt}: {height}")
 
         attempts = 3
-        selected_format = None
+        selected_resolution = None
 
         while attempts > 0:
             selected_resolution = input("Enter the resolution (e.g., '720p', '1080p', '480p'): ").strip()
-            selected_format = next((fmt for fmt, height in resolutions.items() if height == selected_resolution), None)
-
-            if selected_format:
+            if any(height == selected_resolution for height in resolutions.values()):
                 break
             else:
                 attempts -= 1
@@ -112,19 +134,20 @@ def main():
                 if attempts > 0:
                     print("Please choose one of the resolutions listed above.")
 
-        if selected_format:
+        if selected_resolution:
             if is_playlist:
-                print("Downloading playlist in selected resolution...")
+                print("🎬 Downloading playlist in selected resolution...")
                 for entry in info_dict['entries']:
                     print(f"Downloading: {entry['title']}")
-                    download_video_with_ytdlp(entry['webpage_url'], selected_format, folder_name)
+                    download_video_with_ytdlp(entry['webpage_url'], selected_resolution, folder_name)
             else:
-                download_video_with_ytdlp(video_url, selected_format, folder_name)
+                download_video_with_ytdlp(video_url, selected_resolution, folder_name)
         else:
-            print("Too many invalid attempts. Exiting.")
+            print("❌ Too many invalid attempts. Exiting.")
 
     else:
-        print("Invalid download type. Please run the program again.")
+        print("❌ Invalid download type. Please run the program again.")
+
 
 if __name__ == "__main__":
     main()
